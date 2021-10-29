@@ -1,42 +1,50 @@
 apiVersion: apps/v1
+
 kind: Deployment
-metadata:
+metadata: 
   name: server-deployment
 spec:
-  replicas: 1
   selector:
     matchLabels:
       component: server
+  replicas: 1
   template:
     metadata:
       labels:
         component: server
     spec:
       containers:
-      - name: server
-        image: mosabami/multi-server
-        resources:
-          limits:
-            memory: "128Mi"
-            cpu: "500m"
-        ports:
-        - containerPort: 5000
-        env:
-          - name: REDIS_HOST
-            value: redis-service
-          - name:  REDIS_PORT
-            value: '6379'
-          - name: PGUSER
-            value: postgres
-          - name: PGHOST
-            value: postgres-service
-          - name: PGPORT
-            value: '5432'
-          - name: PGDATABASE
-            value: postgres
-          - name: PGPASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: pgpassword
-                key: PGPASSWORD
-
+        - name: server
+          image: acr37107.azurecr.io/multi-server:v2
+          imagePullPolicy: Always
+          volumeMounts:
+          - name: secrets-store-inline
+            mountPath: "/mnt/secrets-store"
+            readOnly: true
+          ports:
+            - containerPort: 5000
+          env:
+            - name: REDIS_HOST
+              value:  redis-service
+            - name: REDIS_PORT
+              value: '6379'
+            - name: PGUSER
+              value: postgres@postgresql-shmakseslu
+            - name: PGHOST
+              value: 10.1.16.7
+            - name: PGPORT
+              value: '5432'
+            - name: PGDATABASE
+              value: postgres
+            - name: PGPASSWORD
+              valueFrom: 
+                secretKeyRef: 
+                  name: pgpassword
+                  key: PGPASSWORD
+      volumes:
+        - name: secrets-store-inline
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "postgres-secret-csi"
